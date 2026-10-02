@@ -17671,6 +17671,12 @@ NTSTATUS virtual_alloc_teb( TEB **ret_teb )
              * 4 GB would hand a non-LAA program a TEB32/PEB32 above 0x80000000
              * (the third device run's 0xFFFE0000/0xFFFF0000). */
             if (wow && !zbits) zbits = limit_2g - 1;
+            /* The ceiling is a session global, set while any 32-bit process is
+             * alive (ml1270, ios_section_zero_bits).  A 64-bit process has no
+             * guest window, so for it that ceiling is an impossible sub-4-GB
+             * host range: its next TEB block, and with it the thread that
+             * needed one, failed with STATUS_NO_MEMORY. */
+            if (!wow) zbits = 0;
 #endif
             status = STATUS_NO_MEMORY;
 #ifdef WINE_IOS
