@@ -580,6 +580,22 @@ static void madeira_link_syswow64_wbem(NSFileManager *fm, NSString *prefix, NSSt
             linked, sizeof(wbem) / sizeof(wbem[0]));
 }
 
+/* system32\mui, and syswow64\mui for 32-bit processes. wine.inf creates both
+ * ("11,mui," in [FakeDlls] and [FakeDllsWow64]) during wineboot's fake-DLL
+ * install, which this port never runs, so the template has neither. Steam's
+ * CEG step reads the identity of C:\windows\system32\mui with
+ * GetFileInformationByHandle; when the directory is missing the step fails
+ * and Steam reports EResult 2 for the game's executable. Empty directories,
+ * as on a normal Wine prefix. */
+static void madeira_create_mui_dirs(NSFileManager *fm, NSString *prefix, BOOL wow64)
+{
+    [fm createDirectoryAtPath:[prefix stringByAppendingPathComponent:@"drive_c/windows/system32/mui"]
+  withIntermediateDirectories:YES attributes:nil error:nil];
+    if (wow64)
+        [fm createDirectoryAtPath:[prefix stringByAppendingPathComponent:@"drive_c/windows/syswow64/mui"]
+      withIntermediateDirectories:YES attributes:nil error:nil];
+}
+
 /* C:\windows\winsxs for 32-bit processes: the x86 side-by-side assemblies Wine
  * ships. Re-seeded every session, because the links name the bundle path.
  *
@@ -1258,6 +1274,8 @@ static void *wine_process_thread(void *arg) {
                             farms[i].farm, farmLinked, farms[i].arch);
                 }
             }
+
+            madeira_create_mui_dirs(fm, prefix, has_i386_set);
 
             /* WoW64: the i386 farm, syswow64\wbem and the x86 side-by-side
              * store for every session once the bundle has it (docs/WOW64.md).
